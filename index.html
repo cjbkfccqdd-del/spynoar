@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>STATION X</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Special+Elite&family=Oswald:wght@400;700&display=swap');
+
+:root {
+  --bg:#070707; --amber:#c8a84b; --amber-dim:#5a4a20;
+  --amber-glow:#eacc70; --red:#aa2020; --green:#3aaa3a;
+  --text:#b0a070; --text-dim:#504030; --white:#d0c8b0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;overflow:hidden;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(200,168,75,.02) 3px,rgba(200,168,75,.02) 4px);pointer-events:none;z-index:9999;}
+
+.screen{display:none;height:100%;flex-direction:column;}
+.screen.active{display:flex;}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 18px 32px;}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--amber-dim);flex-shrink:0;}
+.topbar-title{font-family:'Oswald',sans-serif;font-size:17px;letter-spacing:.25em;color:var(--amber);text-shadow:0 0 12px rgba(200,168,75,.4);}
+.topbar-sub{font-size:8px;letter-spacing:.3em;color:var(--amber-dim);margin-top:2px;}
+
+/* Action bar pinned to bottom */
+.action{flex-shrink:0;padding:12px 18px 24px;}
+
+/* Buttons */
+.btn{width:100%;padding:19px;background:transparent;border:1px solid var(--amber);color:var(--amber-glow);font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:.4em;cursor:pointer;transition:background .15s;}
+.btn:active{background:rgba(200,168,75,.12);}
+.btn-dim{border-color:var(--amber-dim);color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.25em;margin-top:8px;}
+.btn-dim:active{border-color:var(--amber);color:var(--amber);}
+.btn-sm{padding:10px 16px;font-size:10px;letter-spacing:.3em;width:auto;}
+
+/* Labels */
+.lbl{font-size:9px;letter-spacing:.4em;color:var(--amber-dim);}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--amber-dim),transparent);margin:16px 0;}
+
+/* ── BOOT ── */
+#boot{justify-content:center;align-items:center;}
+.boot-inner{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 28px;}
+.boot-stamp{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;letter-spacing:.3em;color:var(--red);border:2px solid var(--red);padding:4px 14px;transform:rotate(-6deg);box-shadow:0 0 12px rgba(170,32,32,.3);margin-bottom:32px;display:inline-block;}
+.boot-logo{font-family:'Oswald',sans-serif;font-size:clamp(58px,18vw,84px);font-weight:700;letter-spacing:.35em;color:var(--amber);text-shadow:0 0 30px rgba(200,168,75,.5);animation:flicker 10s infinite;line-height:1;}
+.boot-tag{font-size:9px;letter-spacing:.45em;color:var(--amber-dim);margin:8px 0 36px;}
+.boot-text{font-size:12px;color:var(--text-dim);line-height:2.3;margin-bottom:44px;}
+
+/* ── HQ ── */
+.handler-box{margin:0 0 16px;padding:16px;border-left:2px solid var(--amber-dim);background:rgba(200,168,75,.03);}
+.handler-text{font-family:'Special Elite',cursive;font-size:14px;line-height:1.9;color:var(--white);opacity:.9;margin-top:6px;}
+
+.mission-card{padding:18px 16px;border:1px solid rgba(200,168,75,.15);margin-bottom:10px;position:relative;cursor:pointer;transition:background .15s;}
+.mission-card.open{border-color:rgba(200,168,75,.45);}
+.mission-card.open:active{background:rgba(200,168,75,.07);}
+.mission-card.locked{opacity:.3;cursor:default;}
+.mission-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber-dim);}
+.mission-card.open::before{background:var(--amber);}
+.m-num{font-size:8px;letter-spacing:.4em;color:var(--amber-dim);margin-bottom:5px;}
+.m-name{font-family:'Oswald',sans-serif;font-size:21px;letter-spacing:.15em;color:var(--white);margin-bottom:5px;}
+.mission-card.open .m-name{color:var(--amber-glow);}
+.m-desc{font-size:11px;color:var(--text-dim);line-height:1.6;}
+.m-tag{display:inline-block;margin-top:10px;font-size:8px;letter-spacing:.3em;padding:3px 10px;border:1px solid;}
+.tag-open{border-color:var(--amber);color:var(--amber);}
+.tag-locked{border-color:var(--text-dim);color:var(--text-dim);}
+.lock-ic{position:absolute;right:16px;top:18px;font-size:16px;opacity:.4;}
+
+/* ── MISSION ── */
+.progress{display:flex;gap:5px;padding:10px 18px 0;flex-shrink:0;}
+.ps{flex:1;height:3px;background:var(--amber-dim);opacity:.2;transition:all .4s;}
+.ps.done{opacity:1;background:var(--amber);}
+.ps.now{opacity:1;background:var(--amber-glow);animation:blink 1.5s infinite;}
+
+.phase{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.phase.active{display:flex;}
+
+/* Brief */
+.brief-head{font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;letter-spacing:.2em;color:var(--amber-glow);text-shadow:0 0 20px rgba(200,168,75,.4);line-height:1.1;margin-bottom:4px;}
+.brief-sub{font-size:8px;letter-spacing:.5em;color:var(--text-dim);margin-bottom:22px;}
+.brief-body{font-family:'Special Elite',cursive;font-size:14px;line-height:1.95;color:var(--white);opacity:.9;}
+.intel-box{background:rgba(200,168,75,.05);border:1px solid rgba(200,168,75,.2);padding:14px;margin:14px 0;font-size:12px;line-height:2.1;color:var(--amber);}
+
+/* Radio */
+.freq-row{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.04);margin-bottom:12px;}
+.freq-num{font-size:30px;letter-spacing:.1em;color:var(--amber);text-shadow:0 0 12px rgba(200,168,75,.5);}
+.bars{display:flex;gap:4px;align-items:flex-end;height:30px;}
+.bar{width:5px;background:var(--amber-dim);border-radius:1px;animation:pulse 1.5s infinite;}
+.bar:nth-child(1){height:8px;}.bar:nth-child(2){height:15px;animation-delay:.1s;}
+.bar:nth-child(3){height:22px;animation-delay:.2s;}.bar:nth-child(4){height:30px;animation-delay:.3s;}
+.bar:nth-child(5){height:18px;animation-delay:.4s;}
+
+.tx-log{background:#040804;border:1px solid rgba(58,170,58,.2);padding:12px;margin-bottom:12px;}
+.tx-entry{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(58,170,58,.08);}
+.tx-entry:last-child{margin-bottom:0;padding-bottom:0;border:none;}
+.tx-t{font-size:9px;color:var(--text-dim);margin-bottom:3px;}
+.tx-d{font-size:13px;color:#3aaa3a;letter-spacing:.2em;word-break:break-all;text-shadow:0 0 6px rgba(58,170,58,.4);}
+.tx-m{font-size:9px;color:var(--amber-dim);margin-top:3px;}
+.radio-out{background:#040804;border:1px solid rgba(58,170,58,.2);padding:14px;font-size:12px;line-height:2;color:#3aaa3a;text-shadow:0 0 6px rgba(58,170,58,.3);white-space:pre-wrap;min-height:120px;}
+
+/* Cipher */
+.cipher-msg{text-align:center;font-size:clamp(17px,5.5vw,24px);letter-spacing:.25em;color:var(--amber);background:rgba(200,168,75,.05);border:1px solid rgba(200,168,75,.25);padding:16px;line-height:1.9;word-break:break-all;font-weight:bold;margin-bottom:12px;}
+.decode-disp{text-align:center;font-size:clamp(16px,5vw,22px);letter-spacing:.2em;color:#3aaa3a;background:#040804;border:1px solid rgba(58,170,58,.2);padding:16px;line-height:1.9;word-break:break-all;min-height:70px;margin-bottom:14px;text-shadow:0 0 8px rgba(58,170,58,.4);}
+
+/* Word tokens */
+.word-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.wtok{padding:13px 18px;border:1px solid rgba(200,168,75,.2);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:15px;letter-spacing:.2em;cursor:pointer;transition:all .15s;background:transparent;}
+.wtok.sel{border-color:var(--amber);color:var(--amber-glow);background:rgba(200,168,75,.08);}
+.wtok.done{border-color:rgba(58,170,58,.4);color:#3aaa3a;}
+
+/* Letter panel */
+.letter-panel{background:rgba(0,0,0,.6);border:1px solid rgba(200,168,75,.2);padding:16px;margin-bottom:12px;}
+.sel-word{font-size:22px;letter-spacing:.3em;color:var(--amber);text-align:center;padding:10px 0 14px;border-bottom:1px solid rgba(200,168,75,.15);margin-bottom:14px;}
+.lrow{display:flex;align-items:center;gap:0;margin-bottom:10px;}
+.cl{font-size:20px;font-weight:bold;color:var(--amber);width:38px;text-align:center;flex-shrink:0;}
+.arr{font-size:14px;color:var(--amber-dim);width:26px;text-align:center;flex-shrink:0;}
+.pscroll{display:flex;gap:7px;overflow-x:auto;flex:1;-webkit-overflow-scrolling:touch;padding:3px 0;scrollbar-width:none;}
+.pscroll::-webkit-scrollbar{display:none;}
+.pbtn{flex-shrink:0;width:44px;height:44px;border:1px solid rgba(200,168,75,.2);background:transparent;color:var(--text);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.pbtn.on{border-color:var(--amber);background:rgba(200,168,75,.15);color:var(--amber-glow);}
+.pbtn:active{background:rgba(200,168,75,.1);}
+
+/* Disinformation */
+.choice{padding:20px 20px 20px 50px;border:1px solid rgba(200,168,75,.2);margin-bottom:12px;cursor:pointer;position:relative;transition:all .15s;}
+.choice::before{content:'▶';position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--amber-dim);}
+.choice:active{background:rgba(200,168,75,.07);border-color:var(--amber-dim);}
+.choice-txt{font-family:'Special Elite',cursive;font-size:14px;line-height:1.85;color:var(--white);}
+
+/* Result */
+#result{justify-content:center;align-items:center;}
+.res-inner{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 24px;}
+.res-stamp{font-family:'Oswald',sans-serif;font-size:34px;font-weight:700;letter-spacing:.3em;padding:8px 18px;border:3px solid;display:inline-block;margin-bottom:28px;animation:stampIn .4s ease;}
+.s-ok{color:var(--green);border-color:var(--green);box-shadow:0 0 20px rgba(58,170,58,.3);}
+.s-part{color:var(--amber);border-color:var(--amber);box-shadow:0 0 20px rgba(200,168,75,.3);}
+.s-fail{color:var(--red);border-color:var(--red);box-shadow:0 0 20px rgba(170,32,32,.3);transform:rotate(-4deg);}
+.res-title{font-family:'Oswald',sans-serif;font-size:18px;letter-spacing:.2em;color:var(--amber-glow);margin-bottom:10px;}
+.res-body{font-family:'Special Elite',cursive;font-size:14px;line-height:1.95;color:var(--text);max-width:320px;margin:0 auto 22px;white-space:pre-wrap;}
+.res-score{font-size:10px;letter-spacing:.3em;color:var(--amber-dim);margin-bottom:32px;}
+.res-score span{color:var(--amber);}
+
+/* Toast */
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#0a0a08;border:1px solid var(--amber);color:var(--amber);font-size:10px;letter-spacing:.3em;padding:12px 22px;z-index:10000;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;}
+
+/* Location cards */
+.loc-card{padding:16px;border:1px solid rgba(200,168,75,.18);cursor:pointer;transition:all .15s;position:relative;}
+.loc-card:active,.loc-card.sel{background:rgba(200,168,75,.07);border-color:rgba(200,168,75,.5);}
+.loc-card.sel::after{content:'✓ VALD';position:absolute;right:14px;top:14px;font-size:8px;letter-spacing:.3em;color:var(--amber);}
+.loc-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.loc-id{font-size:8px;letter-spacing:.4em;color:var(--amber-dim);}
+.loc-risk{font-size:8px;letter-spacing:.3em;padding:2px 8px;border:1px solid;}
+.r-low{color:#3aaa3a;border-color:#3aaa3a;}
+.r-med{color:var(--amber);border-color:var(--amber);}
+.r-high{color:var(--red);border-color:var(--red);}
+.loc-name{font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:.15em;color:var(--white);margin-bottom:6px;}
+.loc-detail{font-size:11px;color:var(--text-dim);line-height:1.7;margin-bottom:6px;}
+.loc-flag{font-size:10px;color:var(--amber-dim);letter-spacing:.05em;}
+
+/* Person cards M03 */
+.person-card{padding:15px 16px;border:1px solid rgba(200,168,75,.15);cursor:pointer;transition:all .15s;position:relative;}
+.person-card:active{background:rgba(200,168,75,.06);}
+.person-card.flagged{border-color:rgba(200,168,75,.5);background:rgba(200,168,75,.05);}
+.person-card.flagged::after{content:'NOTERAD';position:absolute;right:14px;top:14px;font-size:8px;letter-spacing:.3em;color:var(--amber);}
+.person-name{font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:.15em;color:var(--white);margin-bottom:5px;}
+.person-desc{font-size:11px;color:var(--text-dim);line-height:1.7;}
+.person-detail{font-size:11px;color:var(--amber-dim);margin-top:5px;letter-spacing:.05em;}
+
+/* Dialogue M04 */
+.d4-them{background:rgba(200,168,75,.04);border:1px solid rgba(200,168,75,.12);padding:13px 14px;border-radius:0;}
+.d4-you{background:rgba(58,170,58,.04);border:1px solid rgba(58,170,58,.15);padding:13px 14px;}
+.d4-speaker{font-size:8px;letter-spacing:.4em;margin-bottom:5px;}
+.d4-them .d4-speaker{color:var(--amber-dim);}
+.d4-you .d4-speaker{color:rgba(58,170,58,.6);}
+.d4-line{font-family:'Special Elite',cursive;font-size:13px;line-height:1.85;color:var(--white);}
+.d4-them .d4-line{color:var(--white);}
+.d4-you .d4-line{color:#c0e8c0;}
+.d4-choice{padding:16px 16px 16px 44px;border:1px solid rgba(200,168,75,.18);cursor:pointer;position:relative;transition:all .15s;margin-bottom:0;}
+.d4-choice::before{content:'▶';position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--amber-dim);}
+.d4-choice:active{background:rgba(200,168,75,.07);border-color:var(--amber-dim);}
+.d4-choice-txt{font-family:'Special Elite',cursive;font-size:13px;line-height:1.7;color:var(--white);}
+.d4-tactic{font-size:8px;letter-spacing:.3em;margin-top:5px;}
+.tac-empati{color:#4a8aaa;}
+.tac-press{color:var(--red);}
+.tac-bluff{color:var(--amber);}
+.tac-tyst{color:var(--text-dim);}
+
+/* Animations */
+@keyframes flicker{0%,88%,90%,92%,100%{opacity:1}89%,91%{opacity:.4}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes stampIn{from{opacity:0;transform:scale(1.3)}to{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot" class="screen active">
+  <div class="scroll" style="display:flex;align-items:center;justify-content:center;min-height:100%;">
+    <div class="boot-inner">
+      <div class="boot-stamp">HEMLIGSTÄMPLAT</div>
+      <div class="boot-logo">STATION X</div>
+      <div class="boot-tag">AVDELNING FÖR MÖRKA OPERATIONER</div>
+      <div class="divider" style="width:200px;margin:0 auto 24px;"></div>
+      <div class="boot-text">
+        OPERATIV TERMINAL<br>
+        BEHÖRIGHETSNIVÅ: SVART<br>
+        ──────────────────<br>
+        Du existerar inte.<br>
+        Om du misslyckas<br>existerade du aldrig.
+      </div>
+      <button class="btn" style="max-width:260px;" onclick="showHQ()">LOGGA IN</button>
+    </div>
+  </div>
+</div>
+
+<!-- HQ -->
+<div id="hq" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">UPPDRAGSCENTER</div>
+      <div class="topbar-sub">KODNAMN: GRÄVLING // AKTIV SESSION</div>
+    </div>
+    <div style="font-size:9px;color:var(--amber-dim);text-align:right;">
+      <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px;animation:blink 2s infinite;vertical-align:middle;"></span>KRYPTERAD
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="handler-box">
+      <div class="lbl">// Handler: Ravn — krypterat meddelande</div>
+      <div class="handler-text">"Situationen är sämre än vi trodde. Fem öppna fronter. Du jobbar dig igenom dem ett i taget. Börja med signalerna — det är grunden. Allt annat faller utan det."</div>
+    </div>
+    <div class="lbl" style="margin-bottom:12px;">// Tillgängliga uppdrag</div>
+
+    <div class="mission-card open" onclick="startM01()">
+      <div class="m-num">UPPDRAG 01</div>
+      <div class="m-name">SIGNAL INTELLIGENCE</div>
+      <div class="m-desc">Identifiera sändningsmönster. Knäck krypteringen. Plantera desinformation.</div>
+      <span class="m-tag tag-open">AKTIV</span>
+    </div>
+    <div class="mission-card open" onclick="startM02()"><div class="m-num">UPPDRAG 02</div><div class="m-name">DEAD DROP</div><div class="m-desc">Plantera information på en fysisk plats utan att lämna spår.</div><span class="m-tag tag-open">AKTIV</span></div>
+    <div class="mission-card open" onclick="startM03()"><div class="m-num">UPPDRAG 03</div><div class="m-name">SURVEILLANCE</div><div class="m-desc">Du har en skugga. Identifiera dem utan att de vet att du vet.</div><span class="m-tag tag-open">AKTIV</span></div>
+    <div class="mission-card open" onclick="startM04()"><div class="m-num">UPPDRAG 04</div><div class="m-name">INTERROGATION</div><div class="m-desc">Källan vet mer än hon säger. Du har en timme.</div><span class="m-tag tag-open">AKTIV</span></div>
+    <div class="mission-card open" onclick="startM05()"><div class="m-num">UPPDRAG 05</div><div class="m-name">EXFILTRATION</div><div class="m-desc">Du är komprometterad. Sex timmar. Falsk identitet. Ta dig ut.</div><span class="m-tag tag-open">AKTIV</span></div>
+  </div>
+</div>
+
+<!-- MISSION 01 -->
+<div id="m01" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">SIGNAL INTELLIGENCE</div>
+      <div class="topbar-sub">UPPDRAG 01 // OPERATION NATTFALK</div>
+    </div>
+    <button class="btn btn-sm" style="border-color:var(--amber-dim);color:var(--amber-dim);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.3em;width:auto;padding:10px 16px;" onclick="showHQ()">◀ HQ</button>
+  </div>
+  <div class="progress">
+    <div class="ps now" id="ps1"></div>
+    <div class="ps" id="ps2"></div>
+    <div class="ps" id="ps3"></div>
+  </div>
+
+  <!-- BRIEF -->
+  <div id="ph-brief" class="phase active">
+    <div class="scroll">
+      <div class="lbl" style="color:var(--red);margin-bottom:16px;">// HEMLIGSTÄMPLAT — FÖRSTÖR EFTER LÄSNING</div>
+      <div class="brief-head">OPERATION<br>NATTFALK</div>
+      <div class="brief-sub">SIGNAL INTELLIGENCE // PRIORITET ALFA</div>
+      <div class="lbl" style="margin-bottom:8px;">// Situationsanalys</div>
+      <div class="brief-body" style="margin-bottom:18px;">En okänd aktör sänder krypterade radiosignaler nära Hamburg. Korta, oregelbundna — klassisk spiontraffik. Vi tror de koordinerar en operation mot en av våra tillgångar i Berlin.</div>
+      <div class="intel-box">AVLYSSNAT FRAGMENT — 23:14 UTC<br>─────────────────────<br>SÄNDARE: 14.285 MHz<br>DURATION: 47 sekunder<br>KRYPTERING: OKÄND<br>PLATS: 53.5°N 10.0°E</div>
+      <div class="lbl" style="margin-bottom:8px;">// Din uppgift</div>
+      <div class="brief-body" style="margin-bottom:18px;">
+        <span style="color:var(--amber);">1. ANALYSERA</span> — Studera den avlyssnade trafiken.<br><br>
+        <span style="color:var(--amber);">2. KNÄCK</span> — Lösgör krypteringen. Substitutionschiffer.<br><br>
+        <span style="color:var(--amber);">3. PLANTERA</span> — Skicka ett falskt svar i deras namn.
+      </div>
+      <div class="lbl" style="margin-bottom:8px;">// Handler: Ravn</div>
+      <div class="brief-body">"Var snabb. Varje minut de kommunicerar fritt är en minut vi förlorar. Och Grävling — om du är osäker, gissa inte. Fel svar i den här branschen har konsekvenser."</div>
+    </div>
+    <div class="action"><button class="btn" onclick="goRadio()">▶ ANALYSERA SIGNALER</button></div>
+  </div>
+
+  <!-- RADIO -->
+  <div id="ph-radio" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="lbl">// Realtidsavlyssning — 14.285 MHz</div>
+      <div class="freq-row">
+        <div>
+          <div class="lbl" style="margin-bottom:4px;">FREKVENS</div>
+          <div class="freq-num">14.285 <span style="font-size:13px;color:var(--amber-dim);">MHz</span></div>
+        </div>
+        <div class="bars">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        </div>
+      </div>
+      <div class="lbl">// Avlyssnad trafik</div>
+      <div class="tx-log">
+        <div class="tx-entry"><div class="tx-t">23:07:14 UTC</div><div class="tx-d">VVF KBL RHT — 47 SEK</div><div class="tx-m">BURST ↑ KRYPTERAD</div></div>
+        <div class="tx-entry"><div class="tx-t">23:19:02 UTC</div><div class="tx-d">QRZ DE X7K — 12 SEK</div><div class="tx-m">KORT ACK ↑ KRYPTERAD</div></div>
+        <div class="tx-entry"><div class="tx-t">23:31:44 UTC</div><div class="tx-d">VVF KBL FCK ZHM — 89 SEK</div><div class="tx-m">LÅNG BURST ↑ KRYPTERAD</div></div>
+        <div class="tx-entry"><div class="tx-t">23:43:17 UTC</div><div class="tx-d">QRZ DE X7K ACK — 8 SEK</div><div class="tx-m">BEKRÄFTELSE ↑ KRYPTERAD</div></div>
+      </div>
+      <div class="lbl">// Mönsteranalys</div>
+      <div class="radio-out" id="radioOut">ANALYSERAR...</div>
+    </div>
+    <div class="action">
+      <button class="btn" id="toCipher" onclick="goCipher()" style="display:none;">▶ KNÄCK KRYPTERINGEN</button>
+    </div>
+  </div>
+
+  <!-- CIPHER -->
+  <div id="ph-cipher" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="lbl">// Krypterat meddelande</div>
+      <div class="cipher-msg" id="cipherDisp"></div>
+      <div class="lbl">// Din avkodning</div>
+      <div class="decode-disp" id="decodeDisp">· · · · · · · · ·</div>
+      <div class="lbl">// Tryck på ett ord för att avkoda det</div>
+      <div class="word-row" id="wordRow"></div>
+      <div class="letter-panel" id="lpanel" style="display:none;">
+        <div class="lbl" style="margin-bottom:10px;">// MAPPA BOKSTÄVER — skrolla rad för fler</div>
+        <div class="sel-word" id="selWord"></div>
+        <div id="lrows"></div>
+      </div>
+      <button class="btn btn-dim" onclick="toggleHint()" id="hintBtn">💡 LEDTRÅD [KOSTAR 20 POÄNG]</button>
+      <div id="hintBox" style="display:none;padding:14px;border-left:2px solid var(--red);font-size:12px;color:var(--text-dim);line-height:1.9;">
+        Börja med det kortaste ordet. "TRE" och "MOT" är vanliga svenska ord. Varje kryptobokstav ersätter alltid samma klartextbokstav. Hitta dubbla bokstäver — de avslöjar strukturen.
+      </div>
+    </div>
+    <div class="action"><button class="btn" onclick="checkCipher()">VERIFIERA AVKODNING</button></div>
+  </div>
+
+  <!-- DISINFO -->
+  <div id="ph-disinfo" class="phase">
+    <div class="scroll">
+      <div class="lbl" style="color:var(--red);margin-bottom:16px;">// DESINFORMATIONSOPERATION</div>
+      <div class="brief-body" style="border-left:2px solid var(--red);padding-left:14px;margin-bottom:22px;">"Bra jobbat. Nu vet vi vad de planerar. Din uppgift: skicka ett falskt meddelande i deras namn, på deras frekvens. De måste tro att det är äkta. Välj noggrant."</div>
+      <div class="divider"></div>
+      <div class="lbl" style="margin-bottom:16px;">// Välj ditt falska meddelande</div>
+      <div class="choice" onclick="makeChoice(0)"><div class="choice-txt">Mötet är avbokat. Ny tid kommuniceras via säker kanal. Vänta på signal.</div></div>
+      <div class="choice" onclick="makeChoice(1)"><div class="choice-txt">Mötet är framflyttat 72 timmar. Ny plats: Köpenhamn hamn, kaj 7.</div></div>
+      <div class="choice" onclick="makeChoice(2)"><div class="choice-txt">Operationen är komprometterad. Avbryt omedelbart. Aktivera nödprotokoll.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MISSION 02 -->
+<div id="m02" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">DEAD DROP</div>
+      <div class="topbar-sub">UPPDRAG 02 // OPERATION SKUGGA</div>
+    </div>
+    <button class="btn btn-sm" style="border-color:var(--amber-dim);color:var(--amber-dim);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.3em;width:auto;padding:10px 16px;" onclick="showHQ()">◀ HQ</button>
+  </div>
+  <div class="progress">
+    <div class="ps now" id="d2p1"></div>
+    <div class="ps" id="d2p2"></div>
+    <div class="ps" id="d2p3"></div>
+  </div>
+
+  <!-- BRIEF -->
+  <div id="d2-brief" class="phase active">
+    <div class="scroll">
+      <div class="lbl" style="color:var(--red);margin-bottom:16px;">// HEMLIGSTÄMPLAT — FÖRSTÖR EFTER LÄSNING</div>
+      <div class="brief-head">OPERATION<br>SKUGGA</div>
+      <div class="brief-sub">DEAD DROP // PRIORITET ALFA</div>
+      <div class="lbl" style="margin-bottom:8px;">// Situationsanalys</div>
+      <div class="brief-body" style="margin-bottom:18px;">Tillgången i Berlin — kodnamn SPARVEN — har information vi behöver. Fysisk överlämning är omöjlig. Vi kör en dead drop i Hamburg: du planterar ett tomt minneskort på en avtalad plats. SPARVEN hämtar, laddar sin rapport, lämnar tillbaka. Du hämtar. Enkelt i teorin. Fältarbete är aldrig enkelt.</div>
+      <div class="intel-box">UPPDRAGSPARAMETRAR<br>─────────────────────<br>STAD: Hamburg, Altstadt<br>TIDSFÖNSTER: 22 minuter<br>MOTPARTENS NÄRVARO: BEKRÄFTAD<br>TÄCKNING: CIVIL — VAPEN: EJ TILLÅTET</div>
+      <div class="lbl" style="margin-bottom:8px;">// Din uppgift</div>
+      <div class="brief-body" style="margin-bottom:18px;"><span style="color:var(--amber);">1. VÄLJ PLATS</span> — Tre möjliga drop-punkter. En är komprometterad.<br><br><span style="color:var(--amber);">2. VÄLJ TÄCKMANTEL</span> — Hur beter du dig utan att väcka misstankar?<br><br><span style="color:var(--amber);">3. TAJMA TILLBAKADRAGANDET</span> — För tidigt eller för sent och uppdraget är röjt.</div>
+      <div class="lbl" style="margin-bottom:8px;">// Handler: Ravn</div>
+      <div class="brief-body">"Hamburg är inte vänligt territorium. Tre av motpartens folk bekräftade i området. Du ser dem — anta att de ser dig."</div>
+    </div>
+    <div class="action"><button class="btn" onclick="d2Plats()">▶ ANALYSERA PLATSER</button></div>
+  </div>
+
+  <!-- PLATS -->
+  <div id="d2-plats" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="lbl">// Tre möjliga drop-punkter — välj en</div>
+      <div class="brief-body" style="font-size:12px;margin-bottom:6px;opacity:.7;">Varje plats har fördelar och risker. En av dem är under bevakning.</div>
+
+      <div class="loc-card" id="lc0" onclick="d2PickLoc(0)">
+        <div class="loc-hdr"><span class="loc-id">PUNKT ALFA</span><span class="loc-risk r-low">RISK: LÅG</span></div>
+        <div class="loc-name">Speicherstadt — kanalbrygga</div>
+        <div class="loc-detail">Historiskt lagerkvarter. Folktomt kvällstid. Bra siktlinjer i tre riktningar.</div>
+        <div class="loc-flag">⚠ Kamera bekräftad vid östra ingången</div>
+      </div>
+
+      <div class="loc-card" id="lc1" onclick="d2PickLoc(1)">
+        <div class="loc-hdr"><span class="loc-id">PUNKT BETA</span><span class="loc-risk r-med">RISK: MEDEL</span></div>
+        <div class="loc-name">Rathaus — trappan mot Rathausmarkt</div>
+        <div class="loc-detail">Hög genomströmning, bra täckning i folkmassan. Polisnärvaro oregelbunden.</div>
+        <div class="loc-flag">⚠ Observatör senast sedd 400 meter härifrån</div>
+      </div>
+
+      <div class="loc-card" id="lc2" onclick="d2PickLoc(2)">
+        <div class="loc-hdr"><span class="loc-id">PUNKT GAMMA</span><span class="loc-risk r-high">RISK: HÖG</span></div>
+        <div class="loc-name">Hauptbahnhof — södra förvaringsskåp</div>
+        <div class="loc-detail">Extrem genomströmning. Kameraövervakning tät. Vakt patrullerar var 8:e minut.</div>
+        <div class="loc-flag">⚠ Incidentrapport i området senaste 48h</div>
+      </div>
+
+      <div id="d2LocFb" style="display:none;padding:14px;border-left:2px solid var(--amber);font-size:13px;color:var(--text);line-height:1.9;font-family:'Special Elite',cursive;"></div>
+    </div>
+    <div class="action">
+      <button class="btn" id="d2ToMantel" onclick="d2Mantel()" style="display:none;">▶ VÄLJ TÄCKMANTEL</button>
+    </div>
+  </div>
+
+  <!-- TÄCKMANTEL -->
+  <div id="d2-mantel" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="lbl" style="margin-bottom:4px;">// Du är på platsen. Hur beter du dig?</div>
+      <div class="brief-body" style="font-size:12px;margin-bottom:8px;opacity:.7;">Din täckmantel avgör hur länge du kan stanna utan att väcka misstankar.</div>
+      <div class="choice" onclick="d2PickMantel(0)"><div class="choice-txt">Turist med kamera. Fotograferar byggnader, rör dig långsamt och oberäkneligt.</div></div>
+      <div class="choice" onclick="d2PickMantel(1)"><div class="choice-txt">Joggar förbi. Snabb genomgång, planterar i rörelse — minimal exponering, men svår kontroll.</div></div>
+      <div class="choice" onclick="d2PickMantel(2)"><div class="choice-txt">Sitter på bänk med telefonen. Naturlig, statisk närvaro — men synlig under lång tid.</div></div>
+    </div>
+  </div>
+
+  <!-- TAJMING -->
+  <div id="d2-tajm" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="lbl">// Paketet är planterat. SPARVEN är på väg.</div>
+      <div class="brief-body" style="border-left:2px solid var(--amber-dim);padding-left:14px;margin-bottom:4px;">Du kan se platsen härifrån. SPARVEN ska vara där om ca 8 minuter. Det finns en figur 50 meter bort som inte rört sig på tre minuter. Kanske ingenting. Kanske bevakning.</div>
+      <div class="intel-box" style="text-align:center;font-size:36px;letter-spacing:.15em;" id="d2clock">08:00</div>
+      <div class="lbl" style="margin-bottom:8px;">// När drar du dig tillbaka?</div>
+      <div class="choice" onclick="d2PickTajm(0)"><div class="choice-txt">Nu — omedelbart. Lämna innan SPARVEN anländer. Minimal exponering.</div></div>
+      <div class="choice" onclick="d2PickTajm(1)"><div class="choice-txt">Vänta tills SPARVEN är bekräftad vid drop-punkten. Säkerställ att hämtningen sker.</div></div>
+      <div class="choice" onclick="d2PickTajm(2)"><div class="choice-txt">Stanna och observera hela operationen. Lämna först när SPARVEN är borta och allt är klart.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MISSION 03 -->
+<div id="m03" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">SURVEILLANCE</div>
+      <div class="topbar-sub">UPPDRAG 03 // OPERATION SPEGEL</div>
+    </div>
+    <button class="btn btn-sm" style="border-color:var(--amber-dim);color:var(--amber-dim);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.3em;width:auto;padding:10px 16px;" onclick="showHQ()">◀ HQ</button>
+  </div>
+  <div class="progress">
+    <div class="ps now" id="d3p1"></div>
+    <div class="ps" id="d3p2"></div>
+    <div class="ps" id="d3p3"></div>
+    <div class="ps" id="d3p4"></div>
+  </div>
+
+  <!-- BRIEF -->
+  <div id="d3-brief" class="phase active">
+    <div class="scroll">
+      <div class="lbl" style="color:var(--red);margin-bottom:16px;">// HEMLIGSTÄMPLAT — FÖRSTÖR EFTER LÄSNING</div>
+      <div class="brief-head">OPERATION<br>SPEGEL</div>
+      <div class="brief-sub">SURVEILLANCE DETECTION RUN // PRIORITET ALFA</div>
+      <div class="lbl" style="margin-bottom:8px;">// Situationsanalys</div>
+      <div class="brief-body" style="margin-bottom:18px;">Vi tror att du är under bevakning. Okänt om det är motpartens folk eller en lokal resurs de hyr in. Du ska genomföra en SDR — Surveillance Detection Run — genom fyra platser i Wien. Syftet är inte att skaka av dig skuggan. Syftet är att bekräfta om du har en, och identifiera vem det är.</div>
+      <div class="intel-box">SDR-RUTT — WIEN<br>─────────────────────<br>STOP 1: Naschmarkt<br>STOP 2: Karlskirche<br>STOP 3: Prater, Hauptallee<br>STOP 4: U-bahn, station Schwedenplatz<br>TIDSFÖNSTER: 90 minuter</div>
+      <div class="lbl" style="margin-bottom:8px;">// Reglerna</div>
+      <div class="brief-body" style="margin-bottom:18px;">Du rör dig som en vanlig person — inga konstiga manövrar, inga plötsliga vändningar. På varje plats observerar du folkmassan och rapporterar dina iakttagelser. I slutet pekar du ut din skugga. <span style="color:var(--amber);">Pekar du ut fel person är du komprometterad.</span></div>
+      <div class="lbl" style="margin-bottom:8px;">// Handler: Ravn</div>
+      <div class="brief-body">"En SDR är tålmodighetens konst. Du jagar inte. Du observerar. Rätt person dyker upp på för många platser, i för liknande kläder, med för lite anledning att vara där. Lita på det du ser — inte vad du tror."</div>
+    </div>
+    <div class="action"><button class="btn" onclick="d3Go(0)">▶ STARTA SDR — NASCHMARKT</button></div>
+  </div>
+
+  <!-- OBSERVATION STOPS (1–4 rendered dynamically) -->
+  <div id="d3-obs" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="lbl" id="d3StopLbl">// STOP 1 — NASCHMARKT</div>
+      <div class="brief-body" style="font-size:13px;" id="d3StopDesc"></div>
+      <div class="divider"></div>
+      <div class="lbl" style="margin-bottom:6px;">// Folkmassan runt dig — vem noterar du?</div>
+      <div id="d3Persons" style="display:flex;flex-direction:column;gap:9px;"></div>
+      <div id="d3ObsFb" style="display:none;padding:14px;border-left:2px solid var(--amber);font-size:13px;color:var(--text);line-height:1.9;font-family:'Special Elite',cursive;"></div>
+    </div>
+    <div class="action">
+      <button class="btn" id="d3NextBtn" onclick="d3NextStop()" style="display:none;">▶ FORTSÄTT</button>
+    </div>
+  </div>
+
+  <!-- FINAL ACCUSATION -->
+  <div id="d3-accuse" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="lbl" style="color:var(--red);margin-bottom:4px;">// SLUTANALYS — PEKA UT DIN SKUGGA</div>
+      <div class="brief-body" style="border-left:2px solid var(--amber-dim);padding-left:14px;margin-bottom:8px;">Du har nu gått igenom alla fyra platser. Baserat på dina observationer — vem är det som följer dig?</div>
+      <div class="lbl" style="margin-bottom:6px;">// Dina anteckningar</div>
+      <div id="d3Notes" style="background:#040804;border:1px solid rgba(58,170,58,.2);padding:14px;font-size:11px;color:#3aaa3a;line-height:2;white-space:pre-wrap;margin-bottom:8px;"></div>
+      <div class="lbl" style="margin-bottom:8px;">// Vem är din skugga?</div>
+      <div id="d3Suspects" style="display:flex;flex-direction:column;gap:9px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MISSION 04 -->
+<div id="m04" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">INTERROGATION</div>
+      <div class="topbar-sub">UPPDRAG 04 // OPERATION KNUTEN HAND</div>
+    </div>
+    <button class="btn btn-sm" style="border-color:var(--amber-dim);color:var(--amber-dim);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.3em;width:auto;padding:10px 16px;" onclick="showHQ()">◀ HQ</button>
+  </div>
+  <div class="progress">
+    <div class="ps now" id="d4p1"></div>
+    <div class="ps" id="d4p2"></div>
+    <div class="ps" id="d4p3"></div>
+    <div class="ps" id="d4p4"></div>
+    <div class="ps" id="d4p5"></div>
+  </div>
+
+  <!-- BRIEF -->
+  <div id="d4-brief" class="phase active">
+    <div class="scroll">
+      <div class="lbl" style="color:var(--red);margin-bottom:16px;">// HEMLIGSTÄMPLAT — FÖRSTÖR EFTER LÄSNING</div>
+      <div class="brief-head">OPERATION<br>KNUTEN HAND</div>
+      <div class="brief-sub">INTERROGATION // PRIORITET ALFA</div>
+      <div class="lbl" style="margin-bottom:8px;">// Källan</div>
+      <div class="brief-body" style="margin-bottom:18px;">Marta Voss. 43 år. Analytiker vid österrikiska inrikesministeriet. Misstänkt för att ha överlämnat strukturdiagram till en okänd aktör för sex veckor sedan. Hon är inte arresterad — hon vet inte att vi vet. Du är "en kollega från en schweizerisk myndighet". Du har 60 minuter och ett rum.</div>
+      <div class="intel-box">KÄND INFORMATION<br>─────────────────────<br>Hon har tillgång: BEKRÄFTAD<br>Motiv: EKONOMISKT — skulder, troligen<br>Kontaktperson: OKÄND KODNAMN<br>Överlämningsmetod: OKÄND<br>Nästa möte: OKÄNT — inom 14 dagar</div>
+      <div class="lbl" style="margin-bottom:8px;">// Din uppgift</div>
+      <div class="brief-body" style="margin-bottom:18px;">Du behöver tre saker: <span style="color:var(--amber);">kontaktpersonens kodnamn</span>, <span style="color:var(--amber);">överlämningsmetoden</span>, och <span style="color:var(--amber);">datumet för nästa möte</span>. Du får inte avslöja att hon är misstänkt — hon måste tro att samtalet handlar om rutinkontroll.</div>
+      <div class="lbl" style="margin-bottom:8px;">// Handler: Ravn</div>
+      <div class="brief-body">"Marta Voss är inte dum. Hon är rädd. Rädsla är antingen ett hinder eller ett verktyg — det beror helt på hur du hanterar den. Tvinga henne i defensiv och hon stänger sig. Ge henne känslan av kontroll och hon berättar mer än hon borde."</div>
+    </div>
+    <div class="action"><button class="btn" onclick="d4Start()">▶ GÅ IN I FÖRHÖRSRUMMET</button></div>
+  </div>
+
+  <!-- FÖRHÖRSRUM -->
+  <div id="d4-room" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:0;">
+      <!-- Källans status -->
+      <div id="d4StatusBar" style="display:flex;gap:10px;margin-bottom:14px;">
+        <div style="flex:1;">
+          <div class="lbl" style="margin-bottom:4px;">TILLIT</div>
+          <div style="height:6px;background:rgba(200,168,75,.1);border:1px solid rgba(200,168,75,.2);">
+            <div id="d4TrustBar" style="height:100%;background:var(--amber);transition:width .5s;width:40%;"></div>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <div class="lbl" style="margin-bottom:4px;">STRESS</div>
+          <div style="height:6px;background:rgba(170,32,32,.1);border:1px solid rgba(170,32,32,.2);">
+            <div id="d4StressBar" style="height:100%;background:var(--red);transition:width .5s;width:20%;"></div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="lbl">TID</div>
+          <div id="d4TimeLeft" style="font-size:13px;color:var(--amber);">60:00</div>
+        </div>
+      </div>
+
+      <!-- Dialogue log -->
+      <div id="d4Log" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
+
+      <!-- Player choices -->
+      <div id="d4Choices" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- SLUTANALYS -->
+  <div id="d4-end" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="lbl" style="color:var(--red);margin-bottom:4px;">// FÖRHÖR AVSLUTAT — SUMMERING</div>
+      <div id="d4EndText" class="brief-body" style="border-left:2px solid var(--amber-dim);padding-left:14px;"></div>
+      <div class="divider"></div>
+      <div class="lbl" style="margin-bottom:6px;">// Extraherad information</div>
+      <div id="d4Intel" style="background:#040804;border:1px solid rgba(58,170,58,.2);padding:14px;font-size:12px;color:#3aaa3a;line-height:2.2;"></div>
+      <div class="lbl" style="margin-bottom:6px;">// Ravns bedömning</div>
+      <div id="d4Ravn" class="brief-body" style="font-size:13px;"></div>
+    </div>
+    <div class="action"><button class="btn" id="d4FinalBtn" onclick="d4Final()">▶ AVSLUTA UPPDRAG</button></div>
+  </div>
+</div>
+
+<!-- MISSION 05 -->
+<div id="m05" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">EXFILTRATION</div>
+      <div class="topbar-sub">UPPDRAG 05 // OPERATION SISTA TÅGET</div>
+    </div>
+    <button class="btn btn-sm" style="border-color:var(--amber-dim);color:var(--amber-dim);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.3em;width:auto;padding:10px 16px;" onclick="showHQ()">◀ HQ</button>
+  </div>
+  <div class="progress">
+    <div class="ps now" id="d5p1"></div>
+    <div class="ps" id="d5p2"></div>
+    <div class="ps" id="d5p3"></div>
+    <div class="ps" id="d5p4"></div>
+  </div>
+
+  <!-- BRIEF -->
+  <div id="d5-brief" class="phase active">
+    <div class="scroll">
+      <div class="lbl" style="color:var(--red);margin-bottom:16px;">// PRIORITET ÖVERSTs — FÖRSTÖR OMEDELBART</div>
+      <div class="brief-head">OPERATION<br>SISTA TÅGET</div>
+      <div class="brief-sub">EXFILTRATION // LIVSFARA</div>
+      <div class="lbl" style="margin-bottom:8px;">// Situationen</div>
+      <div class="brief-body" style="margin-bottom:18px;">Din täckning är bruten. Vi vet inte hur — en läcka, en slarvig rörelse, kanske bara otur. Motpartens folk är aktiverade i Prag. Du har en falsk identitet — Erik Sandström, schweizisk affärsman — och ett pass som håller i tio sekunder vid en ytlig kontroll. Inte längre.</div>
+      <div class="intel-box">
+        STATUSRAPPORT — 03:17 CET<br>
+        ─────────────────────<br>
+        HOTLÄGE: KRITISKT<br>
+        KVARVARANDE TID: 6 TIMMAR<br>
+        IDENTITET: ERIK SANDSTRÖM (SCHWEIZ)<br>
+        MÅL: GRÄNSEN VID ROZVADOV<br>
+        RESURSER: 800 EUR KONTANT
+      </div>
+      <div class="lbl" style="margin-bottom:8px;">// Ravn — sista kontakt</div>
+      <div class="brief-body" style="margin-bottom:18px;">"Lyssna noga. Vi kan inte hjälpa dig aktivt. Om du grips är du på egen hand — vi existerar inte. Ta dig till Rozvadov. Använd inte mobilen. Lita inte på någon du inte visste om igår. Och Grävling — kom hem."</div>
+    </div>
+    <div class="action"><button class="btn" onclick="d5Go(0)">▶ LÄMNA LÄGENHETEN</button></div>
+  </div>
+
+  <!-- KRIS-SCENER (renderas dynamiskt) -->
+  <div id="d5-scene" class="phase">
+    <div class="scroll" style="display:flex;flex-direction:column;gap:12px;">
+      <!-- Status strip -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(200,168,75,.1);">
+        <div>
+          <div class="lbl" style="margin-bottom:3px;">ÅTERSTÅENDE TID</div>
+          <div id="d5time" style="font-size:22px;color:var(--amber);letter-spacing:.1em;">06:00</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="lbl" style="margin-bottom:3px;">EXPONERING</div>
+          <div style="height:8px;width:100px;background:rgba(170,32,32,.1);border:1px solid rgba(170,32,32,.2);">
+            <div id="d5expBar" style="height:100%;background:var(--red);transition:width .5s;width:0%;"></div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="lbl" style="margin-bottom:3px;">RESURSER</div>
+          <div id="d5money" style="font-size:16px;color:var(--amber-glow);">800 EUR</div>
+        </div>
+      </div>
+
+      <div class="lbl" id="d5sceneLbl">// SITUATION 1</div>
+      <div class="brief-body" id="d5sceneDesc" style="font-size:13px;border-left:2px solid var(--amber-dim);padding-left:14px;"></div>
+      <div class="divider" style="margin:4px 0;"></div>
+      <div class="lbl" style="margin-bottom:6px;">// Vad gör du?</div>
+      <div id="d5choices" style="display:flex;flex-direction:column;gap:9px;"></div>
+      <div id="d5fb" style="display:none;padding:14px;border-left:2px solid var(--amber);font-size:13px;color:var(--text);line-height:1.9;font-family:'Special Elite',cursive;"></div>
+    </div>
+    <div class="action">
+      <button class="btn" id="d5nextBtn" onclick="d5Next()" style="display:none;"></button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen">
+  <div class="scroll" style="display:flex;align-items:center;justify-content:center;min-height:100%;">
+    <div class="res-inner">
+      <div class="res-stamp" id="rStamp"></div>
+      <div class="res-title" id="rTitle"></div>
+      <div class="res-body" id="rBody"></div>
+      <div class="res-score" id="rScore"></div>
+      <button class="btn" style="max-width:280px;" onclick="showHQ()">◀ ÅTERGÅ TILL HQ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CIPHER ──
+const SHIFT = 7;
+const PLAIN = "MOT BERLIN PA FREDAG KLOCKAN TRE";
+
+function caesar(t,s){
+  return t.split('').map(c=>{
+    if(c===' ')return ' ';
+    return String.fromCharCode(((c.charCodeAt(0)-65+s+26)%26)+65);
+  }).join('');
+}
+const CIPHER = caesar(PLAIN, SHIFT);
+
+// ── STATE ──
+let score=100, hintUsed=false, pMap={}, selWord=null, words=[];
+
+// ── NAV ──
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function showHQ(){showScreen('hq');}
+
+function showPhase(n){document.querySelectorAll('.phase').forEach(p=>p.classList.remove('active'));document.getElementById('ph-'+n).classList.add('active');}
+
+function setProgress(a){
+  ['ps1','ps2','ps3'].forEach((id,i)=>{
+    const e=document.getElementById(id);
+    e.className='ps'+(i<a?' done':i===a?' now':'');
+  });
+}
+
+// ── START ──
+function startM01(){
+  score=100;hintUsed=false;pMap={};selWord=null;
+  showPhase('brief');setProgress(0);showScreen('m01');
+}
+
+// ── RADIO ──
+function goRadio(){showPhase('radio');setProgress(0);runAnalysis();}
+
+function runAnalysis(){
+  const lines=['> ANALYSERAR MÖNSTER...','> INTERVALL: 12 MIN 28 SEK','> BURST-TEKNIK: KOMPRIMERAD DATA','> PROTOKOLL: NUMMERSTATION-VARIANT','> KOD: SUBSTITUTIONSCHIFFER — BEKRÄFTAT','','> FULLTEXT EXTRAHERAD.','> KRYPTERAT MEDDELANDE REDO.','','>> STARTAR DEKRYPTERINGSMODUL...'];
+  const el=document.getElementById('radioOut');
+  el.textContent='';let i=0;
+  function next(){
+    if(i>=lines.length){document.getElementById('toCipher').style.display='block';return;}
+    el.textContent+=(i>0?'\n':'')+lines[i];i++;
+    setTimeout(next,lines[i-1]===''?80:220+lines[i-1].length*14);
+  }
+  next();
+}
+
+// ── CIPHER ──
+function goCipher(){
+  setProgress(1);
+  words=CIPHER.split(' ');
+  document.getElementById('cipherDisp').textContent=CIPHER;
+  buildWordRow();updateDecode();
+  showPhase('cipher');
+}
+
+function buildWordRow(){
+  const row=document.getElementById('wordRow');
+  row.innerHTML='';
+  words.forEach((w,i)=>{
+    const solved=w.split('').every(c=>pMap[c]!==undefined);
+    const b=document.createElement('button');
+    b.className='wtok'+(selWord===i?' sel':'')+(solved?' done':'');
+    b.textContent=w;
+    b.onclick=()=>selectWord(i);
+    row.appendChild(b);
+  });
+}
+
+function selectWord(i){
+  selWord=i;buildWordRow();
+  buildLetterPanel(words[i]);
+  document.getElementById('lpanel').style.display='block';
+}
+
+function buildLetterPanel(word){
+  document.getElementById('selWord').textContent=word;
+  const rows=document.getElementById('lrows');
+  rows.innerHTML='';
+  const seen=new Set();
+  word.split('').forEach(cl=>{
+    if(seen.has(cl))return;seen.add(cl);
+    const row=document.createElement('div');row.className='lrow';
+    const lbl=document.createElement('div');lbl.className='cl';lbl.textContent=cl;
+    const arr=document.createElement('div');arr.className='arr';arr.textContent='→';
+    const sc=document.createElement('div');sc.className='pscroll';
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(pl=>{
+      const b=document.createElement('button');
+      b.className='pbtn'+(pMap[cl]===pl?' on':'');
+      b.textContent=pl;
+      b.onclick=()=>{pMap[cl]=pl;buildLetterPanel(word);buildWordRow();updateDecode();playClick();};
+      sc.appendChild(b);
+    });
+    row.appendChild(lbl);row.appendChild(arr);row.appendChild(sc);
+    rows.appendChild(row);
+    setTimeout(()=>{if(pMap[cl]){const idx=pMap[cl].charCodeAt(0)-65;const btns=sc.querySelectorAll('.pbtn');if(btns[idx])btns[idx].scrollIntoView({block:'nearest',inline:'center'});}},40);
+  });
+}
+
+function updateDecode(){
+  const d=CIPHER.split('').map(c=>c===' '?' ':(pMap[c]||'·')).join('');
+  document.getElementById('decodeDisp').textContent=d;
+}
+
+function toggleHint(){
+  const b=document.getElementById('hintBox');
+  b.style.display=b.style.display==='block'?'none':'block';
+  if(!hintUsed){hintUsed=true;score-=20;document.getElementById('hintBtn').textContent='💡 LEDTRÅD [ANVÄND]';showToast('LEDTRÅD AKTIVERAD — -20 POÄNG');}
+}
+
+function checkCipher(){
+  let ok=0,tot=0;
+  for(let i=0;i<PLAIN.length;i++){
+    if(PLAIN[i]===' ')continue;tot++;
+    if((pMap[CIPHER[i]]||'')===PLAIN[i])ok++;
+  }
+  const pct=ok/tot;
+  if(pct>=0.85){setProgress(2);showPhase('disinfo');}
+  else if(pct>=0.5){score=Math.max(score-10,10);showToast(ok+'/'+tot+' KORREKT — FORTSÄTT');}
+  else{score=Math.max(score-15,10);showToast('FELAKTIG — PROVA IGEN');}
+}
+
+// ── DISINFORMATION ──
+const OUTCOMES=[
+  {stamp:'SLUTFÖRT',cls:'s-ok',title:'OPERATION NATTFALK: SLUTFÖRT',body:'"Rätt val. De väntar på en signal som aldrig kommer. Berlintillgången är tillfälligt säker."\n\nRavn: "Snyggt. Men 48 timmar — sen listar de ut det. Vi har köpt oss tid, inte seger."',bonus:0},
+  {stamp:'GODKÄNT',cls:'s-part',title:'OPERATION NATTFALK: DELVIS SLUTFÖRT',body:'De åkte till Köpenhamn. Vi hade inte folk på plats. Men vi har identifierat fyra av dem.\n\nRavn: "Suboptimalt. Men vi har ansikten nu. Det är något."',bonus:-10},
+  {stamp:'MISSLYCKAD',cls:'s-fail',title:'OPERATION NATTFALK: MISSLYCKAD',body:'Nödprotokollet aktiverades. De bröt kontakten och bytte frekvens omedelbart.\n\nRavn: "För aggressivt. Nu vet de att vi lyssnar. Dra ut Berlintillgången. Nu."',bonus:-30}
+];
+
+function makeChoice(i){
+  const o=OUTCOMES[i];
+  const f=Math.max(0,score+o.bonus);
+  showResult(o.stamp,o.cls,o.title,o.body,f);
+}
+
+// ══ MISSION 02 ══
+let d2loc=-1, d2mantel=-1, d2timerID=null;
+
+function startM02(){
+  d2loc=-1;d2mantel=-1;
+  clearInterval(d2timerID);
+  d2ShowPhase('brief');d2SetProg(0);showScreen('m02');
+}
+
+function d2ShowPhase(n){
+  document.querySelectorAll('#m02 .phase').forEach(p=>p.classList.remove('active'));
+  document.getElementById('d2-'+n).classList.add('active');
+}
+
+function d2SetProg(a){
+  ['d2p1','d2p2','d2p3'].forEach((id,i)=>{
+    const e=document.getElementById(id);
+    e.className='ps'+(i<a?' done':i===a?' now':'');
+  });
+}
+
+function d2Plats(){d2SetProg(0);d2ShowPhase('plats');}
+
+const LOC_FEEDBACK=[
+  'Speicherstadt. Bra val. Kameran vid östra ingången är ett problem — håll dig till västra sidan av bryggan. Låg trafik kvällstid ger dig andrum.',
+  'Rathaus-trappan. Folkmassan skyddar dig, men observatören i området är oroande. Du rör dig in mot hans sista kända position. Hög risk, hög täckning.',
+  'Hauptbahnhof. Det är ett misstag. Incidentrapporten de senaste 48 timmarna pekar på aktiv motpartsverksamhet. Kamerorna fångar allt. Vaktens rytm ger för lite marginal.'
+];
+const LOC_OK=[true,true,false]; // gamma är komprometterad
+
+function d2PickLoc(i){
+  d2loc=i;
+  document.querySelectorAll('.loc-card').forEach((c,j)=>{
+    c.classList.toggle('sel',j===i);
+  });
+  const fb=document.getElementById('d2LocFb');
+  fb.textContent=LOC_FEEDBACK[i];
+  fb.style.display='block';
+  fb.style.borderLeftColor=LOC_OK[i]?'var(--amber)':'var(--red)';
+  document.getElementById('d2ToMantel').style.display='block';
+}
+
+function d2Mantel(){d2SetProg(1);d2ShowPhase('mantel');}
+
+// mantel: 0=turist(bäst för alfa/beta), 1=jogg(riskabel), 2=bänk(ok)
+function d2PickMantel(i){
+  d2mantel=i;
+  d2SetProg(2);
+  // Start timer countdown visually
+  d2ShowPhase('tajm');
+  let secs=480;
+  const el=document.getElementById('d2clock');
+  d2timerID=setInterval(()=>{
+    secs--;
+    const m=Math.floor(secs/60).toString().padStart(2,'0');
+    const s=(secs%60).toString().padStart(2,'0');
+    el.textContent=m+':'+s;
+    if(secs<=0){clearInterval(d2timerID);el.textContent='00:00';}
+  },100); // fast for atmosphere, not real-time
+}
+
+function d2PickTajm(i){
+  clearInterval(d2timerID);
+  // Scoring logic
+  // loc: alfa(0)=ok, beta(1)=ok-ish, gamma(2)=fail
+  // mantel: turist(0)=bra, jogg(1)=risk, bänk(2)=ok
+  // tajm: nu(0)=säker men ingen bekräftelse, vänta(1)=optimal, observera(2)=överexponering
+
+  let pts=100;
+  let lines=[];
+
+  // Location outcome
+  if(d2loc===2){
+    // Gamma = komprometterad, auto-fail regardless
+    showResult('MISSLYCKAD','s-fail','OPERATION SKUGGA: MISSLYCKAD',
+      'Hauptbahnhof var komprometterat. Motpartens folk identifierade dig vid förvaringsskåpen. SPARVEN kom aldrig.\n\nRavn: "Jag sa det. Incidentrapporten var ett varningsskott. Nu måste vi evakuera SPARVEN på annat sätt. Det kostar oss tre veckor."',
+      0);
+    return;
+  }
+
+  if(d2loc===0) lines.push('Speicherstadt — rätt beslut. Västra bryggan gav dig utrymme.');
+  else { lines.push('Rathaus-trappan — det fungerade, men observatören kom nära.'); pts-=15; }
+
+  if(d2mantel===0) lines.push('Turisttäckningen höll. Du smälte in.');
+  else if(d2mantel===1) { lines.push('Joggingen var riskabel — du hann knappt placera paketet korrekt.'); pts-=20; }
+  else lines.push('Bänken fungerade. Du såg avslappnad ut.');
+
+  if(i===0) { lines.push('Du lämnade tidigt. SPARVEN hämtade utan din bekräftelse — det gick bra den här gången.'); pts-=5; }
+  else if(i===1) { lines.push('Du väntade på bekräftelse. SPARVEN hämtade, du såg det, du drog dig tillbaka. Textboksdefinition av ett lyckat drop.'); }
+  else { lines.push('Du stannade för länge. Figuren 50 meter bort noterade dig. Vi vet inte om det rapporterades.'); pts-=25; }
+
+  const body=lines.join('\n\n')+'\n\nRavn: "'+(pts>=80?'Rent utfört. SPARVEN har data. Vi analyserar imorgon.'
+    :pts>=60?'Det fungerade — men med för stor marginal. Öva på att läsa platser.'
+    :'För många misstag. Nästa gång har vi inte lika mycket tur.')+'"';
+
+  showResult(
+    pts>=80?'SLUTFÖRT':pts>=60?'GODKÄNT':'RISKABELT',
+    pts>=80?'s-ok':pts>=60?'s-part':'s-fail',
+    'OPERATION SKUGGA: '+(pts>=80?'SLUTFÖRT':pts>=60?'GODKÄNT':'RISKABELT'),
+    body, pts
+  );
+}
+
+function showResult(stamp,cls,title,body,pts){
+  document.getElementById('rStamp').className='res-stamp '+cls;
+  document.getElementById('rStamp').textContent=stamp;
+  document.getElementById('rTitle').textContent=title;
+  document.getElementById('rBody').textContent=body;
+  document.getElementById('rScore').innerHTML='POÄNG: <span>'+pts+'</span>/100';
+  showScreen('result');
+}
+
+// ══ MISSION 03 — SURVEILLANCE ══
+
+// The shadow is always PERSON INDEX 1 (Mannen i grå jacka)
+// We track which persons player flags at each stop
+// True shadow shows up at stops 0,1,2,3 with escalating tells
+// Decoys show up at 1-2 stops with innocent explanations
+
+const D3_SHADOW = 1; // index into persons array
+
+const D3_STOPS = [
+  {
+    id: 'naschmarkt',
+    label: 'STOP 1 — NASCHMARKT',
+    desc: 'En livlig utomhusmarknad. Folk handlar, dricker kaffe, stannar vid bås. Du rör dig längs den långa mittgången, stannar vid ett fruktbås i tre minuter, sedan en kaffestånd. Du skannar utan att verka skanna.',
+    persons: [
+      { name: 'Kvinna, röd sjal', desc: 'Ca 50 år. Handlar grönsaker metodiskt. Noterar inte dig.', detail: 'Stannar vid varje bås. Betalar kontant.' },
+      { name: 'Man, grå jacka', desc: 'Ca 35 år. Rör sig utan att handla. Stannar vid ett kafébord nära din position — beställer ingenting.', detail: 'Tittar på telefonen men skärmen är mörk.' },
+      { name: 'Tonåringar, tre st', desc: 'Högljudda. Fotograferar mat. Skrattar mycket.', detail: 'Ingen hotbild.' },
+      { name: 'Man, ryggsäck, hörlurar', desc: 'Ung. Rör sig snabbt igenom marknaden utan att stanna.', detail: 'Verkar ha ett mål.' },
+    ],
+    shadowTell: 'Beställer ingenting. Sitter med mörk skärm. Vinkeln mot dig är konsekvent.',
+    shadowIdx: 1
+  },
+  {
+    id: 'karlskirche',
+    label: 'STOP 2 — KARLSKIRCHE',
+    desc: 'Det öppna torget framför kyrkan. Du sätter dig på kanten av bassängen i fem minuter. Turister fotograferar. Du studerar din karta — en prop. Ingen riktig turist läser kartor så länge.',
+    persons: [
+      { name: 'Äldre par, kameror', desc: 'Fotograferar kyrkan systematiskt. Pratar tyska.', detail: 'Inga tecken på intresse för dig.' },
+      { name: 'Man, grå jacka', desc: 'Nu utan jackan — ljusblå skjorta. Men samma ansikte. Sitter på en bänk 30 meter bort med en tidning.', detail: 'Tidningen har inte vänts på åtta minuter.' },
+      { name: 'Kvinna, businesskläder', desc: 'Pratar i telefon. Stressad gång. Passerar torget.', detail: 'Stannar inte.' },
+    ],
+    shadowTell: 'Tidningen vänds inte. Han har bytt jacka men är samma person som vid Naschmarkt.',
+    shadowIdx: 1
+  },
+  {
+    id: 'prater',
+    label: 'STOP 3 — PRATER, HAUPTALLEE',
+    desc: 'En lång rak allé genom parken. Perfekt för att testa om du är följd — det är svårt att följa någon på en rak linje utan att synas. Du saktar ner, stannar och knyter skon.',
+    persons: [
+      { name: 'Löpare, orange tröja', desc: 'Passerar dig i hög fart. Vänder inte.', detail: 'Inget hot.' },
+      { name: 'Man, ljusblå skjorta', desc: 'Promenerar 60 meter bakom dig. När du stannar för att knyta skon — stannar han också. Låtsas studera sin telefon.', detail: 'Avstånd till dig: konsekvent 50–70 meter sedan start.' },
+      { name: 'Familj med barnvagn', desc: 'Rör sig mot dig. Stannar för att mata ankor vid dammen.', detail: 'Inget hot.' },
+      { name: 'Cyklist', desc: 'Kör förbi i hög hastighet. Engagerad.', detail: 'Inget hot.' },
+    ],
+    shadowTell: 'Han stannar när du stannar. Konsekvent avstånd. Tredje gången du ser samma person.',
+    shadowIdx: 1
+  },
+  {
+    id: 'schwedenplatz',
+    label: 'STOP 4 — U-BAHN SCHWEDENPLATZ',
+    desc: 'Trångt. Tunnelbanan är det ultimata testet — om han följer dig ner i tunneln har du bekräftelse. Du går ner, stannar vid kartdisplayen, låtsas läsa. Du missar medvetet ett tåg.',
+    persons: [
+      { name: 'Kvinna, grön kappa', desc: 'Väntar på tåget. Tittar på klockan upprepade gånger.', detail: 'Stressad pendlare.' },
+      { name: 'Man, nu mörk tröja', desc: 'Tredje plagget idag. Men ansiktet är detsamma. Han går ner, stannar vid automaten — köper inte biljett. Missar samma tåg som du.', detail: 'Han har följt dig igenom hela Wien.' },
+      { name: 'Ungdomar, studentgrupp', desc: 'Bullriga. Fyller perrongen. Tar alla tåget.', detail: 'Inget hot.' },
+    ],
+    shadowTell: 'Tredje byte av kläder. Köper ingen biljett. Missar tåget för att hålla dig i sikte. Bekräftad skugga.',
+    shadowIdx: 1
+  }
+];
+
+let d3stop = 0;
+let d3flags = [[], [], [], []]; // flagged person indices per stop
+let d3notes = '';
+
+function startM03() {
+  d3stop = 0;
+  d3flags = [[], [], [], []];
+  d3notes = '';
+  d3ShowPhase('brief');
+  d3SetProg(0);
+  showScreen('m03');
+}
+
+function d3ShowPhase(n) {
+  document.querySelectorAll('#m03 .phase').forEach(p => p.classList.remove('active'));
+  document.getElementById('d3-' + n).classList.add('active');
+}
+
+function d3SetProg(a) {
+  ['d3p1','d3p2','d3p3','d3p4'].forEach((id, i) => {
+    const e = document.getElementById(id);
+    e.className = 'ps' + (i < a ? ' done' : i === a ? ' now' : '');
+  });
+}
+
+function d3Go(stopIdx) {
+  d3stop = stopIdx;
+  d3SetProg(stopIdx);
+  const stop = D3_STOPS[stopIdx];
+
+  document.getElementById('d3StopLbl').textContent = '// ' + stop.label;
+  document.getElementById('d3StopDesc').textContent = stop.desc;
+  document.getElementById('d3ObsFb').style.display = 'none';
+  document.getElementById('d3NextBtn').style.display = 'none';
+
+  // Build person cards
+  const container = document.getElementById('d3Persons');
+  container.innerHTML = '';
+  stop.persons.forEach((p, pi) => {
+    const card = document.createElement('div');
+    const alreadyFlagged = d3flags[stopIdx].includes(pi);
+    card.className = 'person-card' + (alreadyFlagged ? ' flagged' : '');
+    card.innerHTML = `<div class="person-name">${p.name}</div><div class="person-desc">${p.desc}</div><div class="person-detail">${p.detail}</div>`;
+    card.onclick = () => d3FlagPerson(stopIdx, pi, p, card);
+    container.appendChild(card);
+  });
+
+  d3ShowPhase('obs');
+}
+
+function d3FlagPerson(stopIdx, pi, person, card) {
+  const already = d3flags[stopIdx].includes(pi);
+  if (already) {
+    d3flags[stopIdx] = d3flags[stopIdx].filter(x => x !== pi);
+    card.classList.remove('flagged');
+  } else {
+    d3flags[stopIdx].push(pi);
+    card.classList.add('flagged');
+    playClick();
+
+    // Show observation feedback for the shadow
+    const stop = D3_STOPS[stopIdx];
+    if (pi === stop.shadowIdx) {
+      const fb = document.getElementById('d3ObsFb');
+      fb.textContent = '→ ' + stop.shadowTell;
+      fb.style.display = 'block';
+      fb.style.borderLeftColor = 'var(--amber)';
+    }
+  }
+  // Show next button once at least one person flagged
+  if (d3flags[stopIdx].length > 0) {
+    document.getElementById('d3NextBtn').style.display = 'block';
+  }
+}
+
+function d3NextStop() {
+  // Add to notes
+  const stop = D3_STOPS[d3stop];
+  const flaggedNames = d3flags[d3stop].map(i => stop.persons[i].name).join(', ');
+  d3notes += stop.label + '\nNoterade: ' + (flaggedNames || '—') + '\n\n';
+
+  if (d3stop < 3) {
+    d3Go(d3stop + 1);
+  } else {
+    d3SetProg(4);
+    d3BuildAccuse();
+    d3ShowPhase('accuse');
+  }
+}
+
+function d3BuildAccuse() {
+  document.getElementById('d3Notes').textContent = d3notes.trim();
+
+  // Collect all unique flagged persons with their stop counts
+  const counts = {}; // name → count
+  D3_STOPS.forEach((stop, si) => {
+    d3flags[si].forEach(pi => {
+      const name = stop.persons[pi].name;
+      counts[name] = (counts[name] || 0) + 1;
+    });
+  });
+
+  // Build suspect list — all persons flagged at least once, sorted by count
+  const suspects = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  // Always include the shadow even if not flagged
+  const shadowName = 'Man, grå jacka';
+  if (!counts[shadowName] && !counts['Man, ljusblå skjorta'] && !counts['Man, ljusblå skjorta'] && !counts['Man, nu mörk tröja']) {
+    suspects.push([shadowName + ' / ljusblå skjorta / mörk tröja', 0]);
+  }
+
+  // Always offer all unique persons seen across stops as suspects
+  const allPersons = new Map();
+  D3_STOPS.forEach(stop => {
+    stop.persons.forEach((p, pi) => {
+      if (!allPersons.has(p.name)) allPersons.set(p.name, { ...p, stopIdx: pi });
+    });
+  });
+
+  const container = document.getElementById('d3Suspects');
+  container.innerHTML = '';
+  allPersons.forEach((p, name) => {
+    const timesFlag = counts[name] || 0;
+    const card = document.createElement('div');
+    card.className = 'person-card';
+    card.innerHTML = `
+      <div class="person-name">${name}</div>
+      <div class="person-desc">${p.desc}</div>
+      <div class="person-detail">Noterad ${timesFlag} gång${timesFlag !== 1 ? 'er' : ''} under SDR</div>
+    `;
+    card.onclick = () => d3Accuse(name);
+    container.appendChild(card);
+  });
+}
+
+function d3Accuse(name) {
+  // Shadow goes by three clothing descriptions — all correct
+  const shadowNames = ['Man, grå jacka', 'Man, ljusblå skjorta', 'Man, nu mörk tröja'];
+  const correct = shadowNames.includes(name);
+
+  // Score: base 100, +10 per stop where shadow was flagged, -10 per wrong person flagged
+  let pts = 70;
+  D3_STOPS.forEach((stop, si) => {
+    if (d3flags[si].includes(stop.shadowIdx)) pts += 10;
+    d3flags[si].forEach(pi => { if (pi !== stop.shadowIdx) pts -= 8; });
+  });
+  pts = Math.max(0, Math.min(100, pts));
+
+  if (correct) {
+    showResult(
+      pts >= 80 ? 'BEKRÄFTAT' : 'GODKÄNT',
+      pts >= 80 ? 's-ok' : 's-part',
+      'OPERATION SPEGEL: ' + (pts >= 80 ? 'SLUTFÖRT' : 'GODKÄNT'),
+      'Rätt. Mannen med byt­ande kläder — grå jacka, ljusblå skjorta, mörk tröja — följde dig genom hela Wien. Professionell, men inte tillräckligt.\n\n' +
+      (pts >= 80
+        ? 'Du plockade upp honom tidigt och spårade konsekvent. Läroboksexempel på en SDR.\n\nRavn: "Nu vet vi att de bevakar dig. Det är faktiskt en fördel — vi vet något de inte vet att vi vet."'
+        : 'Du hittade honom, men flaggade också oskyldiga. Det skapar brus. Öva på att filtrera.\n\nRavn: "Rätt slutsats, slarvigt arbete. Den här gången spelar det ingen roll. Nästa kanske det gör det."'),
+      pts
+    );
+  } else {
+    showResult(
+      'MISSLYCKAD',
+      's-fail',
+      'OPERATION SPEGEL: MISSLYCKAD',
+      'Fel person. Mannen med de byt­ande kläderna — grå jacka vid Naschmarkt, ljusblå skjorta vid Karlskirche, mörk tröja i tunnelbanan — gick fri.\n\nHan vet nu att du genomförde en SDR. Han rapporterade det.\n\nRavn: "De vet att vi vet att de bevakar oss. Det är den sämsta positionen att vara i."',
+      0
+    );
+  }
+}
+
+// ══ MISSION 04 — INTERROGATION ══
+
+let d4trust = 40;   // 0–100, starts neutral
+let d4stress = 20;  // 0–100, starts low
+let d4time = 60;    // minutes remaining
+let d4timerID4 = null;
+let d4scene = 0;
+let d4intel = { kodnamn: false, metod: false, datum: false };
+let d4score = 100;
+
+// Each scene: Marta says something, player picks a tactic
+// trust/stress shifts depend on tactic choice
+const D4_SCENES = [
+  {
+    them: "Herr… förlåt, jag glömde vad ni sa att ni hette. Det är en lång dag. Vad gäller det egentligen?",
+    choices: [
+      { txt: "Bara en rutinkontroll. Vi genomgår alla med tillgång till nivå-3-dokument det här kvartalet.", tactic: "EMPATI", tcls:"tac-empati", trust:+15, stress:-5 },
+      { txt: "Vi har fått en rapport. Jag vill inte skrämma dig, men det är allvarligare än en rutinsamtal.", tactic: "PRESS", tcls:"tac-press", trust:-10, stress:+20 },
+      { txt: "Säkerhetsgranskning. Standardförfarande. Kan vi börja?", tactic: "NEUTRAL", tcls:"tac-tyst", trust:0, stress:+5 },
+    ]
+  },
+  {
+    them: "Jag förstår. Jag har arbetat där i nio år. Det har aldrig… alltså, jag har alltid följt protokollet.",
+    choices: [
+      { txt: "Det tror jag dig på. Nio år är lång tid. Du vet hur systemet fungerar bättre än de flesta.", tactic: "EMPATI", tcls:"tac-empati", trust:+15, stress:-5 },
+      { txt: "Följt protokollet. Intressant formulering. Varför sa du det på det sättet?", tactic: "PRESS", tcls:"tac-press", trust:-15, stress:+25 },
+      { txt: "Bra. Då går det snabbt. Berätta om din roll — vad hanterar du dagligen?", tactic: "NEUTRAL", tcls:"tac-tyst", trust:+5, stress:0 },
+    ]
+  },
+  {
+    them: "Jag hanterar… interna analyser. Riskbedömningar. Ibland sammanfattningar till avdelningschefen.",
+    choices: [
+      { txt: "Låter tungt. Är det mycket övertid? Vi ser att du jobbat sena kvällar.", tactic: "EMPATI", tcls:"tac-empati", trust:+10, stress:0, intel_hint: true },
+      { txt: "Vi vet att du öppnade strukturdiagrammet den fjärde. Varför?", tactic: "BLUFF", tcls:"tac-bluff", trust:-5, stress:+30 },
+      { txt: "Vilka utomstående kontakter har du i ditt arbete?", tactic: "DIREKT", tcls:"tac-tyst", trust:-5, stress:+15 },
+    ]
+  },
+  {
+    them: "Ja, det är… det har varit en del extra arbete. Ekonomiskt har det också varit svårt. Skilsmässan förra året. Förlåt, det är irrelevant.",
+    choices: [
+      { txt: "Det är inte irrelevant. Svåra perioder sätter press på oss alla. Det förstår jag.", tactic: "EMPATI", tcls:"tac-empati", trust:+20, stress:-10, intel_hint: true },
+      { txt: "Ekonomiska problem. Det noterar jag. Har du haft kontakt med utomstående parter om det?", tactic: "PRESS", tcls:"tac-press", trust:-20, stress:+35 },
+      { txt: "Vilka kontakter tog du utanför tjänsten den perioden?", tactic: "DIREKT", tcls:"tac-tyst", trust:+5, stress:+10 },
+    ]
+  },
+  {
+    them: "Utomstående kontakter… vad menar ni? Jag har inte gjort något fel.",
+    choices: [
+      { txt: "Nej, det kanske du inte har. Men vi behöver förstå alla kontakter för att kunna stänga ärendet.", tactic: "EMPATI", tcls:"tac-empati", trust:+10, stress:-5 },
+      { txt: "Vi har din kommunikationslogg. Det är bättre om du berättar själv.", tactic: "BLUFF", tcls:"tac-bluff", trust:-10, stress:+40 },
+      { txt: "Bara standardfrågor. Kodnamn, överlämningsmetod. Inget konstigt.", tactic: "BLUFF", tcls:"tac-bluff", trust:0, stress:+20, intel_probe: true },
+    ]
+  },
+];
+
+// Marta's responses depend on trust/stress at that moment
+const D4_RESPONSES = {
+  // [scene][choice] → what Marta says + what intel is revealed
+  '0-0': "Ja, precis. Rutinmässigt. Jag är glad att ni är noggranna med det.",
+  '0-1': "Allvarligare? Vad… vad menar ni? Jag har inte gjort… vad är det ni säger egentligen?",
+  '0-2': "Visst. Vad vill ni veta?",
+  '1-0': "Tack. Ja, jag känner mig trygg med hur det fungerar. Jag är noga.",
+  '1-1': "Jag… det var ingenting konstigt. Jag sa bara att jag följer reglerna. Gör inte alla det?",
+  '1-2': "Jo, det kan jag berätta. Det varierar från vecka till vecka egentligen.",
+  '2-0': "Ja, övertid. Nästan varje vecka i somras. Det hörde ihop med ett specifikt projekt… ett omstruktureringsarbete.",
+  '2-1': "Den fjärde? Jag… ja, det kan stämma. Det var en del dokument i rörelse den veckan. Varför frågar ni om just det?",
+  '2-2': "Utomstående? Ja, vi har kontakt med ett flertal myndigheter. Är det något specifikt ni letar efter?",
+  '3-0': "Det är… tack. Det har faktiskt varit ganska tungt. Jag vet inte varför jag berättar det. Men det var en kontakt som dök upp. En gammal bekant. Han kallade sig… nej, det spelar ingen roll.",
+  '3-1': "Vad? Nej. Nej, jag har inte haft några sådana kontakter. Ni kan inte bara komma hit och—",
+  '3-2': "En kontakt. En person. Det var bara ett möte. Jag visste inte att det var fel.",
+  '4-0': "Nej, förstås. Jag vill att ni förstår att det inte var min idé. Han kontaktade mig. Han sa att det var legalt.",
+  '4-1': "Kommunikationslogg? Ni har…? Okej. Okej. Hans kodnamn var MERKUR. Möten sker via krypterade meddelanden. Nästa är den tolfte.",
+  '4-2': "Kodnamn? Hur vet ni om kodnamn? Det… hans namn var MERKUR. Och jag vill ha en advokat nu.",
+};
+
+function startM04() {
+  d4trust = 40; d4stress = 20; d4time = 60;
+  d4scene = 0;
+  d4intel = { kodnamn: false, metod: false, datum: false };
+  d4score = 100;
+  clearInterval(d4timerID4);
+  d4ShowPhase('brief');
+  d4SetProg(0);
+  showScreen('m04');
+}
+
+function d4ShowPhase(n) {
+  document.querySelectorAll('#m04 .phase').forEach(p => p.classList.remove('active'));
+  document.getElementById('d4-' + n).classList.add('active');
+}
+
+function d4SetProg(a) {
+  ['d4p1','d4p2','d4p3','d4p4','d4p5'].forEach((id, i) => {
+    const e = document.getElementById(id);
+    e.className = 'ps' + (i < a ? ' done' : i === a ? ' now' : '');
+  });
+}
+
+function d4Start() {
+  d4ShowPhase('room');
+  d4SetProg(0);
+  // Start timer
+  d4timerID4 = setInterval(() => {
+    d4time -= 1/6; // ticks every 10s real = 1 min game
+    if (d4time <= 0) { d4time = 0; clearInterval(d4timerID4); d4ForceEnd(); }
+    const m = Math.floor(d4time).toString().padStart(2,'0');
+    const s = Math.floor((d4time % 1) * 60).toString().padStart(2,'0');
+    document.getElementById('d4TimeLeft').textContent = m + ':' + s;
+  }, 1667); // ~10s real per game minute
+  d4Render();
+}
+
+function d4UpdateBars() {
+  document.getElementById('d4TrustBar').style.width = Math.max(0,Math.min(100,d4trust)) + '%';
+  document.getElementById('d4StressBar').style.width = Math.max(0,Math.min(100,d4stress)) + '%';
+  // Color trust bar
+  const tb = document.getElementById('d4TrustBar');
+  tb.style.background = d4trust > 60 ? 'var(--green)' : d4trust > 30 ? 'var(--amber)' : 'var(--red)';
+}
+
+function d4Render() {
+  if (d4scene >= D4_SCENES.length) { d4EndRoom(); return; }
+  d4SetProg(Math.floor(d4scene * 4 / D4_SCENES.length));
+  const scene = D4_SCENES[d4scene];
+  const log = document.getElementById('d4Log');
+
+  // Add Marta's line
+  const them = document.createElement('div');
+  them.className = 'd4-them';
+  them.innerHTML = `<div class="d4-speaker">MARTA VOSS</div><div class="d4-line">${scene.them}</div>`;
+  log.appendChild(them);
+  log.scrollTop = log.scrollHeight;
+
+  // Build choices
+  const choicesEl = document.getElementById('d4Choices');
+  choicesEl.innerHTML = '';
+  scene.choices.forEach((c, ci) => {
+    const btn = document.createElement('div');
+    btn.className = 'd4-choice';
+    btn.innerHTML = `<div class="d4-choice-txt">"${c.txt}"</div><div class="d4-tactic ${c.tcls}">[${c.tactic}]</div>`;
+    btn.onclick = () => d4Choose(ci);
+    choicesEl.appendChild(btn);
+  });
+  d4UpdateBars();
+}
+
+function d4Choose(ci) {
+  const scene = D4_SCENES[d4scene];
+  const choice = scene.choices[ci];
+  const log = document.getElementById('d4Log');
+
+  // Add player line
+  const you = document.createElement('div');
+  you.className = 'd4-you';
+  you.innerHTML = `<div class="d4-speaker">DU</div><div class="d4-line">"${choice.txt}"</div>`;
+  log.appendChild(you);
+
+  // Apply trust/stress
+  d4trust = Math.max(0, Math.min(100, d4trust + (choice.trust || 0)));
+  d4stress = Math.max(0, Math.min(100, d4stress + (choice.stress || 0)));
+  d4UpdateBars();
+
+  // Get Marta's response
+  const respKey = `${d4scene}-${ci}`;
+  const resp = D4_RESPONSES[respKey] || "Marta ser ner på bordet. Säger ingenting på länge.";
+
+  // Detect intel reveals
+  if (resp.includes('MERKUR')) { d4intel.kodnamn = true; }
+  if (resp.includes('krypterade meddelanden')) { d4intel.metod = true; }
+  if (resp.includes('tolfte')) { d4intel.datum = true; }
+  // Partial reveals from hints
+  if (choice.intel_hint && d4trust > 55) {
+    // Scene 2 empati: hint about extra work → opens up next scene
+  }
+  if (choice.intel_probe && d4trust > 40) {
+    d4intel.kodnamn = true; // partial — confirms existence
+  }
+
+  // Score penalty for high stress
+  if (d4stress > 70) { d4score -= 15; showToast('HON STÄNGER SIG — STRESS KRITISK'); }
+  if (d4trust < 15) { d4score -= 20; }
+
+  setTimeout(() => {
+    const them = document.createElement('div');
+    them.className = 'd4-them';
+    them.innerHTML = `<div class="d4-speaker">MARTA VOSS</div><div class="d4-line">${resp}</div>`;
+    log.appendChild(them);
+    log.scrollTop = log.scrollHeight;
+    playClick();
+
+    // If stress maxed → she shuts down
+    if (d4stress >= 90) {
+      setTimeout(() => {
+        const shutdown = document.createElement('div');
+        shutdown.className = 'd4-them';
+        shutdown.innerHTML = `<div class="d4-speaker">MARTA VOSS</div><div class="d4-line">"Jag pratar inte mer utan en advokat närvarande. Det är mitt sista ord."</div>`;
+        log.appendChild(shutdown);
+        log.scrollTop = log.scrollHeight;
+        document.getElementById('d4Choices').innerHTML = `<button class="btn" onclick="d4EndRoom()" style="margin-top:10px;">▶ AVSLUTA FÖRHÖR</button>`;
+      }, 1200);
+      return;
+    }
+
+    d4scene++;
+    setTimeout(d4Render, 800);
+  }, 600);
+
+  // Clear choices while waiting
+  document.getElementById('d4Choices').innerHTML = '';
+}
+
+function d4ForceEnd() {
+  document.getElementById('d4Choices').innerHTML = `<div style="padding:14px;border-left:2px solid var(--red);font-size:12px;color:var(--text-dim);line-height:1.8;">Tiden är ute. Marta Voss reser sig och lämnar rummet.</div><button class="btn" onclick="d4EndRoom()" style="margin-top:12px;">▶ AVSLUTA FÖRHÖR</button>`;
+}
+
+function d4EndRoom() {
+  clearInterval(d4timerID4);
+  // Build end screen
+  const intelLines = [];
+  if (d4intel.kodnamn) intelLines.push('KONTAKTENS KODNAMN: MERKUR ✓');
+  else intelLines.push('KONTAKTENS KODNAMN: EJ EXTRAHERAT ✗');
+  if (d4intel.metod) intelLines.push('ÖVERLÄMNINGSMETOD: KRYPTERADE MEDDELANDEN ✓');
+  else intelLines.push('ÖVERLÄMNINGSMETOD: EJ EXTRAHERAT ✗');
+  if (d4intel.datum) intelLines.push('NÄSTA MÖTE: DEN TOLFTE ✓');
+  else intelLines.push('NÄSTA MÖTE: EJ EXTRAHERAT ✗');
+
+  const extracted = [d4intel.kodnamn, d4intel.metod, d4intel.datum].filter(Boolean).length;
+  document.getElementById('d4Intel').textContent = intelLines.join('\n');
+
+  let summary, ravn;
+  if (extracted === 3) {
+    summary = 'Du fick allt. Marta Voss berättade mer än hon borde ha gjort — och hon förstod det nog inte förrän efteråt.';
+    ravn = '"Rent hantverk. Vi har kodnamnet, metoden och datumet. MERKUR är identifierad. Vi agerar på den tolfte."';
+    d4score = Math.max(d4score, 80);
+  } else if (extracted === 2) {
+    summary = 'Du fick det mesta. En lucka kvarstår — men det är tillräckligt för att gå vidare.';
+    ravn = '"Bra arbete. Inte perfekt — men i det här jobbet är bra ofta tillräckligt. Vi jobbar med det vi har."';
+    d4score = Math.max(Math.min(d4score, 75), 50);
+  } else if (extracted === 1) {
+    summary = 'Lite för lite. Du fick en bit av bilden, men inte tillräckligt för att agera säkert.';
+    ravn = '"Kodnamnet räcker inte ensamt. Vi vet att MERKUR finns — men inte hur eller när. Det är som att ha halvt ett vapen."';
+    d4score = Math.min(d4score, 45);
+  } else {
+    summary = 'Hon berättade ingenting av värde. Förhöret misslyckades.';
+    ravn = '"Noll. Vi har ingenting. Marta Voss sitter hemma nu och funderar på vad som hände. Och MERKUR vet kanske att vi letar."';
+    d4score = 0;
+  }
+
+  document.getElementById('d4EndText').textContent = summary;
+  document.getElementById('d4Ravn').textContent = ravn;
+  d4ShowPhase('end');
+}
+
+function d4Final() {
+  const extracted = [d4intel.kodnamn, d4intel.metod, d4intel.datum].filter(Boolean).length;
+  const stamp = extracted === 3 ? 'SLUTFÖRT' : extracted >= 2 ? 'GODKÄNT' : extracted === 1 ? 'OFULLSTÄNDIGT' : 'MISSLYCKAD';
+  const cls = extracted === 3 ? 's-ok' : extracted >= 2 ? 's-part' : 's-fail';
+  const intelSummary = [
+    d4intel.kodnamn ? 'Kodnamn: MERKUR' : null,
+    d4intel.metod ? 'Metod: krypterade meddelanden' : null,
+    d4intel.datum ? 'Datum: den tolfte' : null,
+  ].filter(Boolean).join(' / ') || 'Ingen användbar information';
+
+  showResult(stamp, cls,
+    'OPERATION KNUTEN HAND: ' + stamp,
+    `Extraherad intel: ${intelSummary}\n\nRavn: ${document.getElementById('d4Ravn').textContent}`,
+    Math.max(0, d4score)
+  );
+}
+
+// ══ MISSION 05 — EXFILTRATION ══
+
+let d5exp = 0;       // 0–100 exposure
+let d5money = 800;   // EUR
+let d5hours = 6;     // hours remaining
+let d5scene5 = 0;
+let d5alive = true;
+let d5penalty = 0;
+
+const D5_SCENES = [
+  {
+    lbl: '// SITUATION 1 — LÄGENHETEN, 03:19',
+    desc: 'Du packar på 90 sekunder. Passet, kontanterna, ett förkläde. Det ringer på dörren. Tre slag — paus — två slag. Det är inte rätt signal. Det borde vara fyra slag. Kan vara grannen. Kan vara något annat.',
+    choices: [
+      { txt: 'Ignorera. Gå ut via baktrappan.', cost: '−30 min', exp: +5, money: 0,
+        fb: 'Rätt. Baktrappan tar dig ut till gränd. Ingen i trappuppgången. Du hör röster bakom dörren när du är halvvägs ner — minst två personer.' },
+      { txt: 'Öppna dörren en centimeter, kedja på. Se vem det är.', cost: '+risk', exp: +20, money: 0,
+        fb: 'En man du aldrig sett. Han säger "Herr Sandström?" på bruten tyska. Du stänger igen. Nu vet de att du är kvar. Du tar baktrappan i panik — men förlorar tid.' },
+      { txt: 'Stanna kvar. Vänta tills det tystnar, gå ut om tjugo minuter.', cost: '−60 min', exp: +0, money: 0,
+        fb: 'De väntar utanför. Fyrtio minuter senare hör du steg som försvinner. Du lämnar — försenad men ospårad.' },
+    ]
+  },
+  {
+    lbl: '// SITUATION 2 — GATAN, 04:05',
+    desc: 'Det regnar. Du är på gatan med en väska som ser för lätt ut för en affärsman. En taxi saktar in bredvid dig. Föraren nickar. Du beställde ingen taxi. Vid hörnet 40 meter bort: en man i mörk jacka, stilla.',
+    choices: [
+      { txt: 'Ta tunnelbanan — ingen kan följa dig lika lätt i trängseln.', cost: '−20 EUR', exp: -5, money: -20,
+        fb: 'Rätt rörelse. Tunnelbanan är tät, kameror finns men ansiktsigenkänning är inte i realtid. Du tappar eventuell skugga vid tredje bytet.' },
+      { txt: 'Gå in på ett 24-timmarsöppet apotek. Köp något oviktigt. Observera.', cost: '−10 EUR', exp: +0, money: -10,
+        fb: 'Mannen i jackan följer inte efter. Taxin kör vidare. Kanske ingenting. Du lämnar apoteket och tar tunnelbanan — lugnare nu.' },
+      { txt: 'Ta taxin. Rask transport väger mer än risken.', cost: '−150 EUR', exp: +25, money: -150,
+        fb: 'Föraren kör fel väg. Du säger till — han korrigerar utan reaktion. Kanske feltänkt rutt. Kanske testade han dig. Du hoppar av tidigt och betalar kontant.' },
+    ]
+  },
+  {
+    lbl: '// SITUATION 3 — HAUPTBAHNHOF PRAG, 05:30',
+    desc: 'Tåget mot München avgår 05:52. Biljetten kostar 180 EUR kontant. Vid biljettluckan: en uniformerad officer skannar passagerare. Inte rutin — han tittar för länge på var och en. Din identitet håller vid ytlig kontroll. Inte vid en noggrann.',
+    choices: [
+      { txt: 'Köp biljett och gå igenom normalt. Erik Sandström åker till München för ett möte.', cost: '−180 EUR', exp: +15, money: -180,
+        fb: '"Ärende?" — "Affärsmöte, Siemens AG." Han tittar på passet fyra sekunder. Ger tillbaka det. Du andas inte förrän du sitter på tåget.' },
+      { txt: 'Undvik stationen. Ta en buss till Pilsen, sedan vidare till gränsen.', cost: '−4 tim', exp: -15, money: -40,
+        fb: 'Bussen är tyst, halvtom. Ingen kontroll. Det kostar tid du inte har — men du anländer till Pilsen ospårad och med nervsystemet intakt.' },
+      { txt: 'Muta en konduktör för att komma ombord utan biljett.', cost: '−300 EUR', exp: +10, money: -300,
+        fb: 'Han tar pengarna utan att blinka. Du sitter i vagn 4. En halvtimme in — den uniformerade officern från stationen går igenom tåget. Han passerar dig. Stannar inte.' },
+    ]
+  },
+  {
+    lbl: '// SITUATION 4 — GRÄNSEN ROZVADOV, 08:40',
+    desc: 'Du är här. Gränsövergången. Tyska sidan är 200 meter bort. Tjeckisk gränspolis checkar bilar. En av dem, en ung kvinna, har redan tittat på dig två gånger. Du har fem minuter innan nästa skiftbyte — då rör sig personal.',
+    choices: [
+      { txt: 'Gå igenom nu. Rakt fram. Erik Sandström har ingenting att dölja.', cost: '', exp: +0, money: 0,
+        fb: 'Hon stoppar dig. "Passet." Tre sekunder. Fem. Hon stämplar. "Ha en bra resa." Du är på den tyska sidan. Du stannar inte förrän efter 500 meter.' },
+      { txt: 'Vänta på skiftbytet. Fem minuter, ny personal, ny chans.', cost: '−5 min', exp: +5, money: 0,
+        fb: 'Skiftbytet sker. Ny vakt — ung man, ointresserad. Stämpel. Klart. Du är igenom.' },
+      { txt: 'Ta dig igenom på sidovägen — ett hål i staketet du noterade på väg in.', cost: '+risk', exp: +40, money: 0,
+        fb: 'Du hittar hålet. Du kryper igenom. En sensor du inte såg utlöser ett larm. Tjugo sekunder. Du springer de sista hundra metrarna till tysk mark — tekniskt fri men med hjärtat i halsen.' },
+    ]
+  }
+];
+
+function startM05() {
+  d5exp = 0; d5money = 800; d5hours = 6; d5scene5 = 0; d5alive = true; d5penalty = 0;
+  d5ShowPhase('brief');
+  d5SetProg(0);
+  showScreen('m05');
+}
+
+function d5ShowPhase(n) {
+  document.querySelectorAll('#m05 .phase').forEach(p => p.classList.remove('active'));
+  document.getElementById('d5-' + n).classList.add('active');
+}
+
+function d5SetProg(a) {
+  ['d5p1','d5p2','d5p3','d5p4'].forEach((id, i) => {
+    const e = document.getElementById(id);
+    e.className = 'ps' + (i < a ? ' done' : i === a ? ' now' : '');
+  });
+}
+
+function d5UpdateStatus() {
+  const h = Math.floor(d5hours).toString().padStart(2,'0');
+  const m = Math.floor((d5hours % 1) * 60).toString().padStart(2,'0');
+  document.getElementById('d5time').textContent = h + ':' + m;
+  document.getElementById('d5time').style.color = d5hours < 1.5 ? 'var(--red)' : 'var(--amber)';
+  document.getElementById('d5expBar').style.width = Math.min(100, d5exp) + '%';
+  document.getElementById('d5money').textContent = d5money + ' EUR';
+  document.getElementById('d5money').style.color = d5money < 200 ? 'var(--red)' : 'var(--amber-glow)';
+}
+
+function d5Go(idx) {
+  d5scene5 = idx;
+  d5SetProg(idx);
+  const sc = D5_SCENES[idx];
+  document.getElementById('d5sceneLbl').textContent = sc.lbl;
+  document.getElementById('d5sceneDesc').textContent = sc.desc;
+  document.getElementById('d5fb').style.display = 'none';
+  document.getElementById('d5nextBtn').style.display = 'none';
+  d5UpdateStatus();
+
+  const ch = document.getElementById('d5choices');
+  ch.innerHTML = '';
+  sc.choices.forEach((c, ci) => {
+    const div = document.createElement('div');
+    div.className = 'choice';
+    div.innerHTML = `<div class="choice-txt">${c.txt}</div>` +
+      (c.cost ? `<div style="font-size:9px;letter-spacing:.3em;color:var(--amber-dim);margin-top:6px;">${c.cost}</div>` : '');
+    div.onclick = () => d5Pick(idx, ci);
+    ch.appendChild(div);
+  });
+
+  d5ShowPhase('scene');
+}
+
+function d5Pick(idx, ci) {
+  const sc = D5_SCENES[idx];
+  const c = sc.choices[ci];
+
+  // Apply costs
+  d5exp = Math.max(0, Math.min(100, d5exp + (c.exp || 0)));
+  d5money = Math.max(0, d5money + (c.money || 0));
+  // Time costs embedded in feedback — subtract roughly
+  if (c.cost && c.cost.includes('tim')) d5hours -= 4;
+  else if (c.cost && c.cost.includes('60 min')) d5hours -= 1;
+  else if (c.cost && c.cost.includes('30 min')) d5hours -= 0.5;
+  else d5hours -= 0.25;
+
+  d5UpdateStatus();
+
+  // Penalty tracking
+  if (d5exp > 60) d5penalty += 20;
+  if (d5money < 100) d5penalty += 10;
+  if (d5hours < 0.5) d5penalty += 30;
+
+  // Show feedback
+  const fb = document.getElementById('d5fb');
+  fb.textContent = c.fb;
+  fb.style.display = 'block';
+  fb.style.borderLeftColor = d5exp > 60 ? 'var(--red)' : 'var(--amber)';
+  playClick();
+
+  // Clear choices
+  document.getElementById('d5choices').innerHTML = '';
+
+  // Next button
+  const nxt = document.getElementById('d5nextBtn');
+  nxt.style.display = 'block';
+  if (idx < D5_SCENES.length - 1) {
+    nxt.textContent = '▶ FORTSÄTT';
+  } else {
+    nxt.textContent = '▶ DU ÄR IGENOM';
+  }
+}
+
+function d5Next() {
+  if (d5scene5 < D5_SCENES.length - 1) {
+    d5Go(d5scene5 + 1);
+  } else {
+    d5End();
+  }
+}
+
+function d5End() {
+  const pts = Math.max(0, 100 - d5penalty - Math.max(0, d5exp - 30));
+  const clean = d5exp <= 30;
+  const moneyOk = d5money >= 200;
+  const timeOk = d5hours >= 0.3;
+
+  let stamp, cls, body;
+
+  if (clean && timeOk) {
+    stamp = 'UTEXFILTRERAD'; cls = 's-ok';
+    body = 'Du är igenom. Erik Sandström checkar in på ett hotell i Regensburg kl 09:15 och beställer frukost.\n\nMotparten vet att du är borta — de vet inte hur. Det räcker.\n\nRavn: "Du kom hem. Det är allt som räknas i det här jobbet. Resten är detaljer."';
+  } else if (timeOk && d5exp <= 60) {
+    stamp = 'GODKÄNT'; cls = 's-part';
+    body = 'Du är igenom — men det var nära. Spåren du lämnade är sannolikt hanterbara. Sannolikt.\n\nRavn: "Du klarade det. Men du tog för många genvägar. Nästa gång kanske de håller."';
+  } else if (!timeOk) {
+    stamp = 'MISSLYCKAD'; cls = 's-fail';
+    body = 'Klockan gick ut. Motpartens folk stängde av gränsen vid Rozvadov 08:55. Du stod på fel sida.\n\nRavn: "Tjugo minuter. Det var allt du behövde. Jag hoppas att det val du saktade ner för var värt det."';
+  } else {
+    stamp = 'GRIPEN'; cls = 's-fail';
+    body = 'För många spår. De hittade dig vid Rozvadov — inte vid gränsen, utan 800 meter före. Erik Sandström-passet höll inte under ett riktigt förhör.\n\nRavn: "Vi hade ingen möjlighet att hjälpa dig. Det visste du om när du tog uppdraget."';
+  }
+
+  showResult(stamp, cls, 'OPERATION SISTA TÅGET: ' + stamp, body, Math.max(0, pts));
+}
+
+// ── UTILS ──
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// ── AUDIO ──
+let ctx=null;
+function initAudio(){if(ctx)return;ctx=new(window.AudioContext||window.webkitAudioContext)();}
+function playClick(){
+  initAudio();if(!ctx)return;
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.frequency.value=900;o.connect(g);g.connect(ctx.destination);
+  g.gain.setValueAtTime(0.04,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.05);
+  o.start();o.stop(ctx.currentTime+0.05);
+}
+document.addEventListener('touchstart',initAudio,{once:true});
+document.addEventListener('click',initAudio,{once:true});
+</script>
+</body>
+</html>
